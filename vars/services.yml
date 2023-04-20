@@ -1,0 +1,2 @@
+services:
+  - "{{ hyperspace_web }}"

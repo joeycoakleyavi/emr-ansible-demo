@@ -1,0 +1,23 @@
+---
+- hosts: localhost
+  connection: local
+  collections:
+    - vmware.alb
+  tasks:
+    - include_vars:
+        dir: vars
+
+    - name: Build Play for Services
+      template:
+        src: avi_template.j2
+        dest: ./application_plays/{{ service.name + '_play.yml' }}
+      loop: '{{ services }}'
+      loop_control:
+        loop_var: service
+
+    - name: Deploy Services
+      include_tasks:
+        file: ./application_plays/{{ service.name + '_play.yml' }}
+      loop: '{{ services }}'
+      loop_control:
+        loop_var: service

@@ -1,0 +1,84 @@
+- pause:
+    prompt: Do you wish to install the hyperspace_web components? (yes/no)
+  register: install
+
+
+
+
+
+
+
+- name: "Create Pool hyperspace_web_pool"
+  avi_pool:
+    avi_credentials: "{{ AVI_CREDENTIALS }}"
+    tenant_ref: "/api/tenant/?name=admin"
+    tenant: "admin"
+    name: "hyperspace_web_pool"
+    vrf_ref: "/api/vrfcontext/?name=global"
+    state: "present"
+    default_server_port: "30961"
+    cloud_ref: "/api/cloud/?name=Default-Cloud"
+    lb_algorithm: "LB_ALGORITHM_LEAST_CONNECTIONS"
+    application_persistence_profile_ref: "/api/applicationpersistenceprofile/?name=System-Persistence-Http-Cookie"
+    servers:
+    - ip:
+        type: V4
+        addr: 10.206.115.195
+    - ip:
+        type: V4
+        addr: 10.206.114.202
+    health_monitor_refs: ["/api/healthmonitor/?name=System-HTTP"]
+  when: install.user_input | bool
+
+- name: "Create VSVIP for hyperspace_web"
+  avi_vsvip:
+    name: "vsvip-hyperspace_web-10.225.9.252"
+    state: "present"
+    avi_credentials: "{{ AVI_CREDENTIALS }}"
+    vrf_context_ref: "/api/vrfcontext/?name=global"
+    tenant_ref: "/api/tenant/?name=admin"
+    cloud_ref: "/api/cloud/?name=Default-Cloud"
+    vip:
+    - vip_id: '1'
+      avi_allocated_fip: false
+      auto_allocate_ip: false
+      enabled: "True"
+      auto_allocate_floating_ip: false
+      avi_allocated_vip: false
+      auto_allocate_ip_type: V4_ONLY
+      ip_address:
+        type: V4
+        addr: "10.225.9.252"
+  when: install.user_input | bool
+
+
+
+- name: "Create VirtualService for hyperspace_web"
+  avi_virtualservice:
+    avi_credentials: "{{ AVI_CREDENTIALS }}"
+    application_profile_ref: "/api/applicationprofile/?name=System-Secure-HTTP"
+    cloud_ref: "/api/cloud?name=Default-Cloud"
+    enabled: True
+    name: hyperspace_web
+    vrf_context_ref: "/api/vrfcontext/?name=global"
+    state: present
+    network_profile_ref: "/api/networkprofile/?name=System-TCP-Proxy"
+    pool_ref: "/api/pool/?name=hyperspace_web_pool"
+    se_group_ref: "/api/serviceenginegroup/?name=Default-Group"
+    tenant: admin
+    tenant_ref: "/api/tenant/?name=admin"
+    vsvip_ref: "/api/vsvip/?name=vsvip-hyperspace_web-10.225.9.252"
+    services:
+      - enable_ssl: True
+        port: 443
+        port_range_end: 443
+        enable_http2: False
+      - enable_ssl: False
+        port: 80
+        port_range_end: 80
+        enable_http2: False
+    ssl_key_and_certificate_refs: "/api/sslkeyandcertificate/?name=System-Default-Cert"
+    ssl_profile_ref: "/api/sslprofile/?name=System-Standard"
+  when: install.user_input | bool
+
+
